@@ -6,6 +6,8 @@ import { AudioRecorder } from '../../../utils/audioRecorder';
 import { formatTime, createDownloadLink, AudioRecorderInterface } from '../../../utils/apiUtils';
 import { Button } from '../../../components/ui/button';
 import { Sparkles } from 'lucide-react';
+import { Flashcard } from '../../../types/flashcard';
+
 import {
   startRecording,
   stopRecording,
@@ -23,6 +25,7 @@ export default function Home() {
   const [showPlayer, setShowPlayer] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRecorder = useRef<AudioRecorder>(new AudioRecorder());
   const audioContext = useRef<AudioContext | null>(null);
@@ -89,7 +92,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-16">
-        <h1 className="text-4xl font-bold mb-8 text-center">Audio Recorder</h1>
+        <h1 className="text-4xl font-bold mb-8 text-center">Hive</h1>
         <div className="bg-gray-800 rounded-lg shadow-lg p-8 max-w-2xl mx-auto">
           <div className="text-6xl font-semibold mb-8 text-center">
             <div className="inline-block font-mono w-48 text-center bg-gray-700 p-4 rounded">
@@ -143,7 +146,7 @@ export default function Home() {
               <audio controls src={URL.createObjectURL(audioBlob)} className="w-full mb-4" />
               <Button
                 className="w-full py-4 bg-purple-500 hover:bg-purple-600 text-lg"
-                onClick={() => generateFlashcards(audioBlob, setIsGenerating)}
+                onClick={() => generateFlashcards(audioBlob, setIsGenerating, setFlashcards)}
                 disabled={isGenerating}
               >
                 <Sparkles className="mr-2" />
@@ -151,6 +154,34 @@ export default function Home() {
               </Button>
             </div>
           )}
+          {flashcards.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold mb-4">Generated Flashcard</h2>
+              <FlashcardComponent flashcard={flashcards[0]} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FlashcardComponent({ flashcard }: { flashcard: Flashcard }) {
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  return (
+    <div 
+      className="bg-gray-800 w-96 h-56 mx-auto rounded-xl shadow-lg cursor-pointer"
+      onClick={() => setIsFlipped(!isFlipped)}
+    >
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center p-6">
+          <h3 className="text-xl font-bold mb-4 text-white">
+            {isFlipped ? 'Transcript' : 'Note'}
+          </h3>
+          <p className="text-lg text-white">
+            {isFlipped ? flashcard.transcript : 'Click to view transcript'}
+          </p>
         </div>
       </div>
     </div>

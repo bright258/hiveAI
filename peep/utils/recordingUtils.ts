@@ -1,5 +1,6 @@
 import { AudioRecorder } from './audioRecorder';
 import { playBeep, handleStartRecording, handleStopRecording, handleFileUpload, handleGenerateFlashcards } from './apiUtils';
+import { Flashcard } from '../types/flashcard';
 
 export const startRecording = (
   audioContext: AudioContext | null,
@@ -58,7 +59,19 @@ export const onFileUpload = (
   setShowPlayer: React.Dispatch<React.SetStateAction<boolean>>
 ) => handleFileUpload(event, setAudioBlob, setShowPlayer);
 
-export const generateFlashcards = (
-  audioBlob: Blob | null,
-  setIsGenerating: React.Dispatch<React.SetStateAction<boolean>>
-) => audioBlob && handleGenerateFlashcards(audioBlob, setIsGenerating);
+export const generateFlashcards = async (
+  audioBlob: Blob,
+  setIsGenerating: (value: boolean) => void,
+  setFlashcards: (flashcards: Flashcard[]) => void
+) => {
+  try {
+    setIsGenerating(true);
+    const transcript = await handleGenerateFlashcards(audioBlob);
+    const flashcard: Flashcard = { transcript };
+    setFlashcards([flashcard]);
+  } catch (error) {
+    console.error('Error generating flashcard:', error);
+  } finally {
+    setIsGenerating(false);
+  }
+};

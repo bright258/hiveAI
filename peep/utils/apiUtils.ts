@@ -110,21 +110,19 @@ export const handleFileUpload = (
   }
 };
 
-export const handleGenerateFlashcards = async (
-  audioBlob: Blob,
-  setIsGenerating: (value: boolean) => void
-) => {
-  setIsGenerating(true);
+export const handleGenerateFlashcards = async (audioBlob: Blob): Promise<string> => {
   try {
-    const url = await uploadAudioToFirebase(audioBlob);
-    const transcript = await transcribeAudio(url);
-    console.log(transcript);
-    // TODO: Implement flashcard generation logic here
+    // Upload audio to Firebase
+    const audioUrl = await uploadAudioToFirebase(audioBlob);
+    
+    // Transcribe the audio
+    const transcript = await transcribeAudio(audioUrl);
+    
+    // Return the generated transcript
+    return transcript;
   } catch (error) {
-    console.error('Failed to generate flashcards:', error);
-    alert('Failed to generate flashcards. Please try again.');
-  } finally {
-    setIsGenerating(false);
+    console.error('Error generating flashcards:', error);
+    throw error;
   }
 };
 
@@ -146,3 +144,10 @@ export const playBeep = (audioContext: AudioContext, frequency: number, duration
   oscillator.start();
   oscillator.stop(audioContext.currentTime + duration);
 };
+
+export interface Flashcard {
+  id: string;
+  front: string;
+  back: string;
+  audioUrl: string;
+}
