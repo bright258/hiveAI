@@ -27,4 +27,16 @@ export class AudioRecorder implements AudioRecorderInterface {
       this.mediaRecorder!.stop();
     });
   }
+
+  pauseRecording() {
+    if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+      this.mediaRecorder.pause();
+    }
+  }
+
+  resumeRecording() {
+    if (this.mediaRecorder && this.mediaRecorder.state === 'paused') {
+      this.mediaRecorder.resume();
+    }
+  }
 }

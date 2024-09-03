@@ -1,6 +1,7 @@
 import { AssemblyAI } from 'assemblyai';
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { initializeApp } from "firebase/app";
+// import { AudioContext } from 'web-audio-api';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -55,6 +56,8 @@ export const createDownloadLink = (audioBlob: Blob): void => {
 };
 
 export interface AudioRecorderInterface {
+  resumeRecording(): unknown;
+  pauseRecording(): unknown;
   startRecording: () => Promise<void>;
   stopRecording: () => Promise<Blob>;
 }
@@ -123,4 +126,23 @@ export const handleGenerateFlashcards = async (
   } finally {
     setIsGenerating(false);
   }
+};
+
+export const playBeep = (audioContext: AudioContext, frequency: number, duration: number) => {
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+  
+  gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+  gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+  gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + duration - 0.05);
+  gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration);
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  
+  oscillator.start();
+  oscillator.stop(audioContext.currentTime + duration);
 };
