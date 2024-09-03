@@ -2,12 +2,16 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { FaMicrophone, FaStop, FaUpload, FaDownload } from 'react-icons/fa';
-import { transcribeAudio, generateFlashcards, Flashcard } from '../../../utils/apiUtils';
 import { AudioRecorder } from '../../../utils/audioRecorder';
-export type PricingModalProps = {
-  showPricing: boolean;
-  setShowPricing: (show: boolean) => void;
-};
+import {
+  formatTime,
+  createDownloadLink,
+  handleStartRecording,
+  handleStopRecording,
+  handleFileUpload,
+  handleGenerateFlashcards,
+  AudioRecorderInterface
+} from '../../../utils/apiUtils';
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
@@ -15,10 +19,9 @@ export default function Home() {
   const [timer, setTimer] = useState(0);
   const [showPlayer, setShowPlayer] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const audioRecorder = useRef(new AudioRecorder());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioRecorder = useRef<AudioRecorderInterface>(new AudioRecorder());
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -30,74 +33,10 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [isRecording]);
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
-
-  const startRecording = async () => {
-    try {
-      await audioRecorder.current.startRecording();
-      setIsRecording(true);
-      setShowPlayer(false);
-      setError(null);
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
-      setError('Microphone is currently in use by another application or not accessible.');
-    }
-  };
-
-  const stopRecording = async () => {
-    const audioBlob = await audioRecorder.current.stopRecording();
-    setAudioBlob(audioBlob);
-    setIsRecording(false);
-    setShowPlayer(true);
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type.startsWith('audio/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const blob = new Blob([e.target?.result as ArrayBuffer], { type: file.type });
-        setAudioBlob(blob);
-        setShowPlayer(true);
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      alert('Please select a valid audio file.');
-    }
-  };
-
-  const downloadAudio = () => {
-    if (audioBlob) {
-      const url = URL.createObjectURL(audioBlob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = 'audio.wav';
-      document.body.appendChild(a);
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-  };
-
-  async function handleGenerateFlashcards() {
-    if (audioBlob) {
-      setIsGenerating(true);
-      try {
-        const transcript = await transcribeAudio(audioBlob);
-        const generatedFlashcards = await generateFlashcards(transcript);
-        setFlashcards(generatedFlashcards);
-      } catch (error) {
-        console.error('Failed to generate flashcards:', error);
-        alert('Failed to generate flashcards. Please try again.');
-      } finally {
-        setIsGenerating(false);
-      }
-    }
-  };
+  const startRecording = () => handleStartRecording(audioRecorder.current, setIsRecording, setShowPlayer, setError);
+  const stopRecording = () => handleStopRecording(audioRecorder.current, setAudioBlob, setIsRecording, setShowPlayer);
+  const onFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => handleFileUpload(event, setAudioBlob, setShowPlayer);
+  const generateFlashcards = () => audioBlob && handleGenerateFlashcards(audioBlob, setIsGenerating);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
@@ -118,7 +57,7 @@ export default function Home() {
           <input
             type="file"
             accept="audio/*"
-            onChange={handleFileUpload}
+            onChange={onFileUpload}
             ref={fileInputRef}
             className="hidden"
           />
@@ -131,7 +70,7 @@ export default function Home() {
           {audioBlob && !isRecording && (
             <button
               className="p-4 rounded-full bg-yellow-500 text-white"
-              onClick={downloadAudio}
+              onClick={() => audioBlob && createDownloadLink(audioBlob)}
             >
               <FaDownload size={24} />
             </button>
@@ -143,22 +82,11 @@ export default function Home() {
             <audio controls src={URL.createObjectURL(audioBlob)} className="w-full mb-4" />
             <button
               className="w-full px-4 py-2 bg-purple-500 text-white rounded"
-              onClick={handleGenerateFlashcards}
+              onClick={generateFlashcards}
               disabled={isGenerating}
             >
               {isGenerating ? 'Generating Flashcards...' : 'Generate Flashcards'}
             </button>
-          </div>
-        )}
-        {flashcards.length > 0 && (
-          <div className="mt-6 p-4 bg-white rounded-lg shadow-md">
-            <h2 className="text-xl font-semibold mb-4">Flashcards</h2>
-            {flashcards.map((card, index) => (
-              <div key={index} className="mb-4 p-4 bg-gray-100 rounded">
-                <p className="font-medium">{card.question}</p>
-                <p className="mt-2 text-gray-600">{card.answer}</p>
-              </div>
-            ))}
           </div>
         )}
       </div>

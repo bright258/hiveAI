@@ -1,95 +1,126 @@
-import axios from 'axios';
+import { AssemblyAI } from 'assemblyai';
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { initializeApp } from "firebase/app";
 
-const ASSEMBLYAI_API_KEY = "a4f3c23cd647472f8432b3e6294ed3e6";
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SSENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+};
 
-async function uploadAudio(audioBlob: Blob): Promise<string> {
-  const formData = new FormData();
-  formData.append('file', audioBlob);
+const app = initializeApp(firebaseConfig);
 
+const client = new AssemblyAI({
+  apiKey: process.env.NEXT_PUBLIC_ASSEMBLY_AI_API_KEY as string,
+});
 
-  const response = await axios.post('https://api.assemblyai.com/v2/upload', formData, {
-    headers: {
-      'authorization': ASSEMBLYAI_API_KEY,
-      'content-type': 'multipart/form-data',
-    },
-  });
+export const transcribeAudio = async (url: string): Promise<string> => {
+  const transcript = await client.transcripts.transcribe({ audio: url });
+  return transcript.text as string;
+};
 
-  return response.data.upload_url;
-}
-
-async function getTranscription(transcriptId: string): Promise<string> {
-  const response = await axios.get(`https://api.assemblyai.com/v2/transcript/${transcriptId}`, {
-    headers: {
-      'authorization': ASSEMBLYAI_API_KEY,
-    },
-  });
-
-  if (response.data.status === 'completed') {
-    return response.data.text;
-  } else if (response.data.status === 'failed') {
-    throw new Error('Transcription failed');
-  } else {
-    throw new Error('Transcription in progress');
-  }
-}
-
-export async function transcribeAudio(audioBlob: Blob): Promise<string> {
-  const uploadUrl = await uploadAudio(audioBlob);
-
-  const response = await axios.post('https://api.assemblyai.com/v2/transcript', {
-    audio_url: uploadUrl,
-  }, {
-    headers: {
-      'authorization': ASSEMBLYAI_API_KEY,
-    },
-  });
-
-  const transcriptId = response.data.id;
-
-  // Polling for the transcription result
-  let transcript: string | null = null;
-  while (!transcript) {
-    try {
-      transcript = await getTranscription(transcriptId);
-    } catch (error: any) {
-      if (error.message === 'Transcription in progress') {
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds before retrying
-      } else {
-        throw error;
-      }
-    }
-  }
+export const uploadAudioToFirebase = async (audioBlob: Blob): Promise<string> => {
+  const storage = getStorage(app);
+  const audioRef = ref(storage, `audios/${Date.now()}.wav`);
   
-
-  return transcript;
-}
-
-export interface Flashcard {
-  question: string;
-  answer: string;
-}
-
-export async function generateFlashcards(transcript: string): Promise<Flashcard[]> {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.NEXT_PUBLIC_OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: "gpt-3.5-turbo",
-      messages: [
-        { role: "system", content: "You are a helpful assistant that generates flashcards from transcripts. Generate 5 flashcards in JSON format." },
-        { role: "user", content: `Generate flashcards from this transcript: ${transcript}` }
-      ]
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to generate flashcards');
+  try {
+    const snapshot = await uploadBytes(audioRef, audioBlob);
+    console.log('Uploaded audio file!');
+    return await getDownloadURL(snapshot.ref);
+  } catch (error) {
+    console.error('Error uploading audio:', error);
+    throw error;
   }
+};
 
-  const data = await response.json();
-  const flashcardsText = data.choices[0].message.content;
-  return JSON.parse(flashcardsText);
+export const formatTime = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
+export const createDownloadLink = (audioBlob: Blob): void => {
+  const url = URL.createObjectURL(audioBlob);
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = url;
+  a.download = 'audio.wav';
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+export interface AudioRecorderInterface {
+  startRecording: () => Promise<void>;
+  stopRecording: () => Promise<Blob>;
 }
+
+export const handleStartRecording = async (
+  audioRecorder: AudioRecorderInterface,
+  setIsRecording: (value: boolean) => void,
+  setShowPlayer: (value: boolean) => void,
+  setError: (value: string | null) => void
+) => {
+  try {
+    await audioRecorder.startRecording();
+    setIsRecording(true);
+    setShowPlayer(false);
+    setError(null);
+  } catch (error) {
+    console.error('Error accessing microphone:', error);
+    setError('Microphone is currently in use by another application or not accessible.');
+  }
+};
+
+export const handleStopRecording = async (
+  audioRecorder: AudioRecorderInterface,
+  setAudioBlob: (blob: Blob) => void,
+  setIsRecording: (value: boolean) => void,
+  setShowPlayer: (value: boolean) => void
+) => {
+  const audioBlob = await audioRecorder.stopRecording();
+  setAudioBlob(audioBlob);
+  setIsRecording(false);
+  setShowPlayer(true);
+};
+
+export const handleFileUpload = (
+  event: React.ChangeEvent<HTMLInputElement>,
+  setAudioBlob: (blob: Blob) => void,
+  setShowPlayer: (value: boolean) => void
+) => {
+  const file = event.target.files?.[0];
+  if (file && file.type.startsWith('audio/')) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const blob = new Blob([e.target?.result as ArrayBuffer], { type: file.type });
+      setAudioBlob(blob);
+      setShowPlayer(true);
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    alert('Please select a valid audio file.');
+  }
+};
+
+export const handleGenerateFlashcards = async (
+  audioBlob: Blob,
+  setIsGenerating: (value: boolean) => void
+) => {
+  setIsGenerating(true);
+  try {
+    const url = await uploadAudioToFirebase(audioBlob);
+    const transcript = await transcribeAudio(url);
+    console.log(transcript);
+    // TODO: Implement flashcard generation logic here
+  } catch (error) {
+    console.error('Failed to generate flashcards:', error);
+    alert('Failed to generate flashcards. Please try again.');
+  } finally {
+    setIsGenerating(false);
+  }
+};
