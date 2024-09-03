@@ -4,6 +4,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaMicrophone, FaStop, FaUpload, FaDownload } from 'react-icons/fa';
 import { transcribeAudio, generateFlashcards, Flashcard } from '../../../utils/apiUtils';
 import { AudioRecorder } from '../../../utils/audioRecorder';
+export type PricingModalProps = {
+  showPricing: boolean;
+  setShowPricing: (show: boolean) => void;
+};
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
