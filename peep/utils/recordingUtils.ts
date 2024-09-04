@@ -1,6 +1,7 @@
 import { AudioRecorder } from './audioRecorder';
-import { playBeep, handleStartRecording, handleStopRecording, handleFileUpload, handleGenerateFlashcards } from './apiUtils';
+import { handleStartRecording, handleStopRecording, handleFileUpload, handleGenerateFlashcards } from './handleFunctions';
 import { Flashcard } from '../types/flashcard';
+import {playBeep} from '../utils/deviceUtils';
 
 export const startRecording = (
   audioContext: AudioContext | null,
@@ -70,7 +71,8 @@ export const generateFlashcards = async (
     const flashcard: Flashcard = { transcript };
     setFlashcards([flashcard]);
   } catch (error) {
-    console.error('Error generating flashcard:', error);
+    
+    return;
   } finally {
     setIsGenerating(false);
   }

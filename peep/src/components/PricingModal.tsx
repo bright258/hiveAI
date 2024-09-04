@@ -1,6 +1,6 @@
 'use client';
 
-import { PricingModalProps } from '../app/page';
+import { PricingModalProps } from '../../types/pricingTypes';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Sparkles, Zap } from 'lucide-react'

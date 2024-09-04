@@ -1,4 +1,4 @@
-import { AudioRecorderInterface } from "./apiUtils";
+import { AudioRecorderInterface } from "../types/recordTypes";
 
 export class AudioRecorder implements AudioRecorderInterface {
   private mediaRecorder: MediaRecorder | null = null;

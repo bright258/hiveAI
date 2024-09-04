@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/button'
 import { Sparkles } from 'lucide-react'
 
 
+
 export default function Home() {
   const [showPricing, setShowPricing] = useState(false)
 
@@ -38,7 +39,4 @@ export default function Home() {
   )
 }
 
-export interface PricingModalProps {
-  showPricing: boolean;
-  setShowPricing: React.Dispatch<React.SetStateAction<boolean>>;
-}
+

@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaMicrophone, FaStop, FaUpload, FaDownload, FaPause, FaPlay } from 'react-icons/fa';
 import { AudioRecorder } from '../../../utils/audioRecorder';
-import { formatTime, createDownloadLink, AudioRecorderInterface } from '../../../utils/apiUtils';
+import { formatTime, createDownloadLink } from '../../../utils/deviceUtils';
 import { Button } from '../../../components/ui/button';
 import { Sparkles } from 'lucide-react';
 import { Flashcard } from '../../../types/flashcard';
@@ -146,7 +146,7 @@ export default function Home() {
               <audio controls src={URL.createObjectURL(audioBlob)} className="w-full mb-4" />
               <Button
                 className="w-full py-4 bg-purple-500 hover:bg-purple-600 text-lg"
-                onClick={() => generateFlashcards(audioBlob, setIsGenerating, setFlashcards)}
+                onClick={() =>{ try{generateFlashcards(audioBlob, setIsGenerating, setFlashcards)}catch(error){console.log("errrorrrororororo", error)} } }
                 disabled={isGenerating}
               >
                 <Sparkles className="mr-2" />
